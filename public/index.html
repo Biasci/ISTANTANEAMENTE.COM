@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Istantaneamente</title>
+<meta name="description" content="Tutti gli annunci dell'usato in un unico posto, dal più recente.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one big search bar as the hero, category chips under it, then site cards grouped by kind (generalisti / specialisti / ricondizionati). */
+:root {
+  --bg: #f4f6fb;
+  --surface: #ffffff;
+  --ink: #10162e;
+  --muted: #5a6382;
+  --line: #dbe0ee;
+  --accent: #ff5a1f;
+  --accent-ink: #ffffff;
+  --accent-soft: #fff0e9;
+  --blue: #2f4cff;
+  --shadow: 0 1px 2px rgb(16 22 46 / .05), 0 8px 24px rgb(16 22 46 / .07);
+  --f-display: "Unbounded", "Arial Black", system-ui, sans-serif;
+  --f-body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --r: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1122; --surface: #161b31; --ink: #eef0f8; --muted: #9ba3c2; --line: #2a3150;
+    --accent: #ff7a47; --accent-ink: #1a0a02; --accent-soft: #33190e; --blue: #8fa0ff;
+    --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 8px 24px rgb(0 0 0 / .3);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1122; --surface: #161b31; --ink: #eef0f8; --muted: #9ba3c2; --line: #2a3150;
+  --accent: #ff7a47; --accent-ink: #1a0a02; --accent-soft: #33190e; --blue: #8fa0ff;
+  --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 8px 24px rgb(0 0 0 / .3);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+.hero { padding-block: 44px 20px; display: grid; gap: 18px; }
+.brand { font-family: var(--f-display); font-weight: 800; font-size: clamp(28px, 6vw, 54px); letter-spacing: -.02em; line-height: 1; }
+.brand .bolt { color: var(--accent); }
+.brand small { font-size: .38em; font-weight: 600; color: var(--muted); letter-spacing: 0; margin-left: 2px; }
+.tagline { color: var(--muted); font-size: 17px; max-width: 60ch; margin: 0; }
+
+form.search { display: flex; gap: 8px; background: var(--surface); border: 2px solid var(--ink); border-radius: 18px; padding: 6px; box-shadow: var(--shadow); }
+form.search input { flex: 1; min-width: 0; border: 0; background: transparent; padding: 12px 14px; font-size: 18px; outline: none; }
+form.search button { border: 0; background: var(--accent); color: var(--accent-ink); font-weight: 700; padding: 0 22px; border-radius: 12px; cursor: pointer; font-size: 16px; }
+.examples { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 14px; color: var(--muted); }
+.examples button { border: 1px dashed var(--line); background: none; border-radius: 999px; padding: 4px 12px; cursor: pointer; color: var(--ink); }
+.examples button:hover { border-color: var(--accent); }
+
+.cats { display: grid; gap: 8px; padding-block: 6px 0; }
+.arearow { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 10px; align-items: start; }
+.arealabel { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 700; padding-top: 8px; }
+.chiprow { display: flex; gap: 6px; flex-wrap: wrap; }
+@media (max-width: 560px) { .arearow { grid-template-columns: minmax(0, 1fr); gap: 4px; } .arealabel { padding-top: 0; } }
+.areas { display: grid; gap: 22px; }
+.areablock { display: grid; gap: 10px; }
+.areablock h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 700; }
+.catcard .count { font-family: var(--f-mono); font-size: 11.5px; color: var(--accent); }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 14px; cursor: pointer; font-weight: 600; font-size: 14px; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+.resultbar { display: flex; justify-content: space-between; align-items: end; gap: 12px; flex-wrap: wrap; padding-block: 26px 10px; border-bottom: 1px solid var(--line); }
+.resultbar h2 { font-size: 20px; font-weight: 700; overflow-wrap: anywhere; }
+.resultbar h2 em { font-style: normal; color: var(--accent); }
+.resultbar p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+.allbtn { text-decoration: none; background: var(--blue); color: #fff; padding: 10px 16px; border-radius: 12px; font-weight: 700; font-size: 14px; }
+:root[data-theme="dark"] .allbtn { color: #0d1122; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .allbtn { color: #0d1122; } }
+
+.group { padding-block: 22px 4px; display: grid; gap: 12px; }
+.group h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 700; }
+.sites { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+a.site { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; text-decoration: none; color: inherit; transition: transform .15s, border-color .15s; }
+a.site:hover { transform: translateY(-2px); border-color: var(--accent); }
+.mono { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-family: var(--f-display); font-weight: 800; font-size: 16px; color: #fff; }
+.sname { font-weight: 700; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.dom { font-family: var(--f-mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.why { font-size: 13.5px; color: var(--muted); margin-top: 4px; }
+.how { font-family: var(--f-mono); font-size: 10.5px; padding: 1px 6px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.how.g { background: var(--bg); color: var(--muted); }
+.cta { font-size: 13px; font-weight: 700; color: var(--accent); margin-top: 8px; }
+
+.idle { padding-block: 26px; display: grid; gap: 14px; }
+.idle h2 { font-size: 18px; }
+.catgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.catcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 6px; cursor: pointer; text-align: left; }
+.catcard:hover { border-color: var(--accent); }
+.catcard b { font-size: 15px; }
+.catcard span { font-size: 13px; color: var(--muted); }
+
+.recent { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--muted); }
+.recent button { border: 0; background: var(--surface); border-radius: 8px; padding: 4px 10px; cursor: pointer; color: var(--ink); box-shadow: var(--shadow); }
+
+footer { padding-block: 40px 48px; color: var(--muted); font-size: 13px; max-width: 70ch; }
+footer p { margin: 0 0 8px; }
+
+.listhead { display: flex; justify-content: space-between; align-items: end; gap: 12px; flex-wrap: wrap; padding-block: 26px 10px; border-bottom: 1px solid var(--line); }
+.listhead h2 { font-size: 20px; font-weight: 700; overflow-wrap: anywhere; }
+.listhead h2 em { font-style: normal; color: var(--accent); }
+.listhead p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
+.seg button { border: 0; background: none; padding: 7px 12px; cursor: pointer; font-weight: 600; font-size: 13px; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.listings { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; padding-block: 16px; }
+a.ad { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; text-decoration: none; color: inherit; display: flex; flex-direction: column; transition: transform .15s, border-color .15s; }
+a.ad:hover { transform: translateY(-2px); border-color: var(--accent); }
+.ad .img { aspect-ratio: 1; background: var(--bg); display: grid; place-items: center; overflow: hidden; max-width: 100%; }
+.ad .img img { width: 100%; height: 100%; object-fit: cover; }
+.ad .body { padding: 10px 12px 12px; display: grid; gap: 4px; min-width: 0; }
+.ad .p { font-family: var(--f-mono); font-weight: 600; font-size: 17px; font-variant-numeric: tabular-nums; }
+.ad .t { font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ad .m { font-size: 12px; color: var(--muted); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.src { font-family: var(--f-mono); font-size: 10.5px; padding: 1px 6px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.state { padding: 28px 0; color: var(--muted); }
+.more { display: flex; justify-content: center; padding-bottom: 8px; }
+.more button { border: 1px solid var(--line); background: var(--surface); padding: 10px 18px; border-radius: 12px; font-weight: 700; cursor: pointer; }
+.skel { aspect-ratio: .78; border-radius: var(--r); background: linear-gradient(90deg, var(--surface), var(--line), var(--surface)); background-size: 200% 100%; animation: sh 1.2s infinite; }
+@keyframes sh { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+@media (max-width: 480px) { form.search button { padding: 0 14px; } form.search input { font-size: 16px; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <section class="hero">
+    <div class="brand">Istantanea<span class="bolt">mente</span><small>.it</small></div>
+    <p class="tagline">Scrivi cosa cerchi: raccogliamo gli annunci dell'usato in un'unica lista, dal più recente, e ti indichiamo tutti i siti specializzati dove cercare ancora.</p>
+    <form class="search" id="form" role="search">
+      <input id="q" type="search" placeholder="Es. Golf 1.6 diesel, Fender Stratocaster, iPhone 13…" aria-label="Cosa cerchi" autocomplete="off">
+      <button type="submit">Cerca</button>
+    </form>
+    <div class="examples" id="examples"><span>Prova:</span></div>
+    <div class="cats" id="cats" aria-label="Categoria"></div>
+    <div class="recent" id="recent" hidden></div>
+  </section>
+
+  <section id="results" hidden>
+    <div class="listhead">
+      <div>
+        <h2 id="l-title"></h2>
+        <p id="l-sub"></p>
+      </div>
+      <div class="seg" role="group" aria-label="Ordina">
+        <button type="button" id="sort-new" aria-pressed="true">Più recenti</button>
+        <button type="button" id="sort-low" aria-pressed="false">Prezzo più basso</button>
+      </div>
+    </div>
+    <div id="listings" class="listings"></div>
+    <div id="l-state" class="state" hidden></div>
+    <div class="more"><button type="button" id="l-more" hidden>Carica altri annunci</button></div>
+    <div class="resultbar">
+      <div>
+        <h2 id="r-title"></h2>
+        <p id="r-sub"></p>
+      </div>
+      <a class="allbtn" id="r-all" target="_blank" rel="noopener">Cerca su tutti con Google</a>
+    </div>
+    <div id="groups"></div>
+  </section>
+
+  <section class="idle" id="idle">
+    <h2>25 categorie, 70 siti dell'usato</h2>
+    <div id="catgrid" class="areas"></div>
+  </section>
+
+  <footer>
+    <p><b>Come funziona.</b> Gli annunci in lista arrivano dalle fonti che li mettono a disposizione ufficialmente (per ora eBay). Ogni annuncio porta al sito originale, dove avviene l'acquisto.</p>
+    <p>Per gli altri siti apriamo la loro pagina di ricerca già compilata. Dove il sito non accetta una ricerca diretta dal link, usiamo una ricerca Google limitata a quel sito (segnata con "via Google").</p>
+  </footer>
+</main>
+
+<script>
+const enc = encodeURIComponent;
+const G = (domain) => (q) => "https://www.google.com/search?q=" + enc(q + " site:" + domain);
+
+/* d = link di ricerca diretto; senza url si passa da Google site: */
+const S = (name, dom, color, why, url) => ({ name, dom, color, why, url: url || G(dom) });
+const SITES = {
+  /* generalisti */
+  subito:   S("Subito", "subito.it", "#e8333a", "Il più grande sito di annunci tra privati in Italia.", (q) => "https://www.subito.it/annunci-italia/vendita/usato/?q=" + enc(q)),
+  subitoAuto: S("Subito Motori", "subito.it", "#e8333a", "Annunci auto di privati e concessionari in tutta Italia.", (q) => "https://www.subito.it/annunci-italia/vendita/auto/?q=" + enc(q)),
+  ebay:     S("eBay usato", "ebay.it", "#0064d2", "Aste e compralo subito, filtrato solo sull'usato.", (q) => "https://www.ebay.it/sch/i.html?_nkw=" + enc(q) + "&LH_ItemCondition=3000"),
+  fb:       S("Facebook Marketplace", "facebook.com", "#1877f2", "Tanti annunci locali, spesso a prezzi bassi. Serve l'accesso a Facebook.", (q) => "https://www.facebook.com/marketplace/search/?query=" + enc(q)),
+  vinted:   S("Vinted", "vinted.it", "#09838f", "Abbigliamento, ma anche elettronica, casa e intrattenimento.", (q) => "https://www.vinted.it/catalog?search_text=" + enc(q)),
+  amazonusato: S("Amazon Seconda mano", "amazon.it", "#232f3e", "Resi e prodotti aperti a prezzo ridotto, con reso Amazon.", (q) => "https://www.amazon.it/s?k=" + enc(q) + "&i=warehouse-deals"),
+  mercatinousato: S("Mercatino dell'Usato", "mercatinousato.com", "#e4002b", "Rete di negozi dell'usato in conto vendita in tutta Italia."),
+  clasf:    S("Clasf", "clasf.it", "#3aa648", "Annunci gratuiti di ogni genere da tutta Italia."),
+  bakeca:   S("Bakeca", "bakeca.it", "#f7a600", "Annunci locali divisi per città."),
+  secondamano: S("Secondamano", "secondamano.it", "#d71920", "Storico giornale di annunci, forte in Lombardia."),
+  portaportese: S("Porta Portese", "portaportese.it", "#004b93", "Lo storico mercato degli annunci di Roma."),
+  catawiki: S("Catawiki", "catawiki.com", "#0033ff", "Aste settimanali di oggetti speciali verificati da esperti."),
+
+  /* veicoli */
+  autoscout:S("AutoScout24", "autoscout24.it", "#2b2b2b", "Il più grande mercato auto d'Europa, con filtri dettagliati."),
+  automobile: S("Automobile.it", "automobile.it", "#1d6fe0", "Auto usate e km 0 da concessionari italiani."),
+  autouncle:S("AutoUncle", "autouncle.it", "#23a455", "Confronta gli annunci di molti siti e dice se il prezzo è buono."),
+  ilparking:S("ilParking", "ilparking.com", "#f39200", "Aggregatore di annunci auto da tanti portali."),
+  autosupermarket: S("Autosupermarket", "autosupermarket.it", "#e2001a", "Annunci auto usate di concessionari e privati."),
+  quattroruote: S("Quattroruote usato", "quattroruote.it", "#c8102e", "Annunci e quotazioni dell'usato dalla rivista di riferimento."),
+  mobilede: S("mobile.de", "mobile.de", "#ff6600", "Il mercato tedesco: scelta enorme, utile per importare."),
+  autohero: S("Autohero", "autohero.com", "#00a3e0", "Auto usate controllate, con garanzia e consegna a casa."),
+  spoticar: S("Spoticar", "spoticar.it", "#0b2340", "Usato garantito dei marchi Stellantis (Fiat, Peugeot, Jeep…)."),
+  dasweltauto: S("Das WeltAuto", "dasweltauto.it", "#001e50", "Usato garantito del gruppo Volkswagen."),
+  motoit:   S("Moto.it usato", "moto.it", "#c4161c", "Moto e scooter usati da privati e concessionari."),
+  dueruote: S("Dueruote", "dueruote.it", "#222222", "Annunci moto usate collegati alla rivista di settore."),
+  insella:  S("InSella", "insella.it", "#e30613", "Annunci moto e scooter con schede tecniche."),
+  camperonline: S("CamperOnLine", "camperonline.it", "#2e7d32", "Community di camperisti con mercatino dell'usato."),
+  boat24:   S("Boat24", "boat24.com", "#0067b1", "Barche a vela e a motore usate in tutta Europa."),
+  inautia:  S("iNautia", "inautia.it", "#00a0df", "Annunci di barche usate in Italia."),
+  yachtworld: S("YachtWorld", "yachtworld.com", "#1b365d", "Yacht e barche di broker internazionali."),
+  agriaffaires: S("Agriaffaires", "agriaffaires.it", "#7ab800", "Trattori e macchine agricole usate."),
+  mascus:   S("Mascus", "mascus.it", "#f9b000", "Macchine movimento terra, camion e attrezzature usate."),
+  truckscout: S("TruckScout24", "truckscout24.it", "#2b2b2b", "Camion, furgoni e veicoli commerciali usati."),
+  ovoko:    S("Ovoko", "ovoko.it", "#ff5f00", "Ricambi auto usati da demolitori di tutta Europa."),
+
+  /* tecnologia */
+  backmarket: S("Back Market", "backmarket.it", "#1a1a1a", "Elettronica ricondizionata con garanzia di almeno 12 mesi.", (q) => "https://www.backmarket.it/it-it/search?q=" + enc(q)),
+  refurbed: S("refurbed", "refurbed.it", "#00a36c", "Ricondizionati con garanzia e prova di 30 giorni."),
+  swappie:  S("Swappie", "swappie.com", "#ff4d6d", "iPhone ricondizionati e testati."),
+  trendevice: S("TrenDevice", "trendevice.com", "#00a0e3", "Ricondizionati Apple con garanzia, azienda italiana."),
+  rebuy:    S("reBuy", "rebuy.it", "#00b2a9", "Elettronica, giochi e libri usati con garanzia."),
+  hwupgrade:S("Mercatino Hardware Upgrade", "hwupgrade.it", "#0c4da2", "Il mercatino del forum italiano di hardware PC."),
+  mpb:      S("MPB", "mpb.com", "#4b2bd1", "Fotocamere e obiettivi usati controllati, con garanzia."),
+  juza:     S("JuzaPhoto mercatino", "juzaphoto.com", "#333333", "Il mercatino della più grande community fotografica italiana."),
+  hifishark:S("HifiShark", "hifishark.com", "#0d5c91", "Motore di ricerca dell'hi-fi usato su decine di siti."),
+  audiogon: S("Audiogon", "audiogon.com", "#7a1f1f", "Mercato internazionale di hi-fi di alta gamma."),
+
+  /* musica e media */
+  mercatinomusicale: S("Mercatino Musicale", "mercatinomusicale.com", "#d4252b", "Il punto di riferimento italiano per strumenti usati."),
+  reverb:   S("Reverb", "reverb.com", "#f36f21", "Marketplace mondiale di strumenti, filtrato sull'usato.", (q) => "https://reverb.com/marketplace?query=" + enc(q) + "&condition=used"),
+  thomann:  S("Thomann", "thomann.de", "#005ca9", "Offerte e B-Stock: strumenti resi o da esposizione con garanzia.", (q) => "https://www.thomann.de/it/search_dir.html?sw=" + enc(q)),
+  strumentimusicali: S("Strumentimusicali.net", "strumentimusicali.net", "#e30613", "Negozio italiano con occasioni e usato garantito."),
+  musikproduktiv: S("Musik Produktiv", "musik-produktiv.com", "#e2001a", "Grande negozio tedesco con sezione usato e B-Stock."),
+  gear4music: S("Gear4music", "gear4music.it", "#ff6b00", "Strumenti di seconda mano e resi a prezzo ridotto."),
+  discogs:  S("Discogs", "discogs.com", "#333333", "Il database e mercato mondiale di vinili e CD.", (q) => "https://www.discogs.com/search/?q=" + enc(q) + "&type=all"),
+  cdandlp:  S("CDandLP", "cdandlp.com", "#b0122b", "Vinili e CD da negozi di dischi europei."),
+  abebooks: S("AbeBooks", "abebooks.it", "#cc0000", "Libri usati, rari e fuori catalogo da librerie di tutto il mondo.", (q) => "https://www.abebooks.it/servlet/SearchResults?kn=" + enc(q)),
+  libraccio:S("Libraccio usato", "libraccio.it", "#e30613", "Libri usati e scolastici dalla catena italiana."),
+  comprovendolibri: S("Comprovendolibri", "comprovendolibri.it", "#2f6f3e", "Libri usati venduti da privati."),
+  maremagnum: S("Maremagnum", "maremagnum.com", "#7b1e1e", "Libri antichi e rari dalle librerie antiquarie."),
+
+  /* moda */
+  vestiaire: S("Vestiaire Collective", "vestiairecollective.com", "#111111", "Moda e lusso usati con verifica di autenticità.", (q) => "https://it.vestiairecollective.com/search/?q=" + enc(q)),
+  depop:    S("Depop", "depop.com", "#ff2300", "Vintage e streetwear dai profili dei venditori.", (q) => "https://www.depop.com/it/search/?q=" + enc(q)),
+  micolet:  S("Micolet", "micolet.it", "#e7457f", "Abbigliamento di seconda mano selezionato."),
+  chrono24: S("Chrono24", "chrono24.it", "#1f3c88", "Il più grande mercato di orologi di lusso usati.", (q) => "https://www.chrono24.it/search/index.htm?query=" + enc(q)),
+  collectorsquare: S("Collector Square", "collectorsquare.com", "#000000", "Borse e orologi di lusso usati e autenticati."),
+  babybazar:S("Baby Bazar", "babybazar.it", "#f28c00", "Negozi dell'usato per bambini: passeggini, abiti, giochi."),
+
+  /* casa */
+  deesup:   S("Deesup", "deesup.com", "#111111", "Arredamento di design usato e verificato."),
+  pamono:   S("Pamono", "pamono.it", "#6b4f3a", "Mobili e oggetti vintage e di design da gallerie europee."),
+
+  /* tempo libero */
+  buycycle: S("buycycle", "buycycle.com", "#111111", "Bici usate di qualità con pagamento protetto."),
+  bikeflip: S("Bikeflip", "bikeflip.com", "#ff6a13", "Bici usate controllate e ricondizionate."),
+  upway:    S("Upway", "upway.it", "#2a5bd7", "E-bike ricondizionate con garanzia."),
+  delcampe: S("Delcampe", "delcampe.net", "#004a99", "Francobolli, monete, cartoline e collezionismo."),
+  cardmarket: S("Cardmarket", "cardmarket.com", "#1a4a8a", "Il mercato europeo delle carte collezionabili (Pokémon, Magic…)."),
+  anticoantico: S("Anticoantico", "anticoantico.com", "#8b5a2b", "Antiquari italiani con mobili e oggetti d'epoca."),
+  proantic: S("Proantic", "proantic.com", "#5a3e2b", "Antiquariato da gallerie europee selezionate."),
+};
+
+const GEN = ["subito", "ebay", "fb"];
+const C = (id, label, area, desc, gen, spec, ric, kw) => ({ id, label, area, desc, gen, spec, ric, kw });
+const CATS = [
+  C("tutto", "Tutto", "", "", ["subito", "ebay", "fb", "vinted", "clasf", "bakeca", "secondamano", "portaportese"], ["mercatinousato", "catawiki"], ["amazonusato", "backmarket"], []),
+
+  C("auto", "Auto", "Veicoli", "AutoScout24, AutoUncle, ilParking", ["subitoAuto", "fb", "ebay"], ["autoscout", "automobile", "autouncle", "ilparking", "autosupermarket", "quattroruote", "mobilede"], ["autohero", "spoticar", "dasweltauto"],
+    ["auto", "macchina", "golf", "panda", "punto", "500", "fiat", "bmw", "audi", "mercedes", "volkswagen", "vw", "toyota", "ford", "fiesta", "opel", "renault", "peugeot", "citroen", "kia", "hyundai", "dacia", "jeep", "suv", "station wagon", "berlina", "utilitaria", "diesel", "benzina", "gpl", "metano", "ibrida", "tesla", "alfa romeo", "lancia", "ypsilon", "skoda", "seat", "volvo", "mini cooper", "smart", "clio", "yaris", "polo", "tiguan", "qashqai"]),
+  C("moto", "Moto e scooter", "Veicoli", "Moto.it, Dueruote, InSella", GEN, ["motoit", "dueruote", "insella", "autoscout", "mobilede"], [],
+    ["moto", "scooter", "vespa", "ducati", "yamaha", "kawasaki", "ktm", "aprilia", "triumph", "harley", "benelli", "motorino", "cbr", "mt-07", "tmax", "sh 125", "beverly", "enduro", "motard"]),
+  C("camper", "Camper e caravan", "Veicoli", "CamperOnLine, AutoScout24", GEN, ["camperonline", "autoscout", "mobilede"], [],
+    ["camper", "caravan", "roulotte", "motorhome", "furgonato", "mansardato", "semintegrale"]),
+  C("barche", "Barche", "Veicoli", "Boat24, iNautia, YachtWorld", GEN, ["boat24", "inautia", "yachtworld"], [],
+    ["barca", "barche", "gommone", "yacht", "veliero", "barca a vela", "fuoribordo", "motoscafo", "catamarano"]),
+  C("lavoro", "Mezzi da lavoro", "Veicoli", "Agriaffaires, Mascus, TruckScout24", GEN, ["agriaffaires", "mascus", "truckscout"], [],
+    ["trattore", "trattori", "escavatore", "miniescavatore", "camion", "furgone", "ducato", "transit", "muletto", "carrello elevatore", "rimorchio", "pala gommata"]),
+  C("ricambi", "Ricambi auto e moto", "Veicoli", "Ovoko, eBay", ["ebay", "subito", "fb"], ["ovoko"], [],
+    ["ricambi", "ricambio", "cerchi", "cerchioni", "gomme", "pneumatici", "faro", "fanale", "paraurti", "specchietto", "marmitta", "centralina", "motore completo", "cambio"]),
+
+  C("elettronica", "Smartphone e tablet", "Tecnologia", "Back Market, Swappie, refurbed", ["subito", "ebay", "fb", "vinted"], [], ["backmarket", "refurbed", "swappie", "trendevice", "rebuy", "amazonusato"],
+    ["iphone", "smartphone", "telefono", "cellulare", "samsung", "galaxy", "xiaomi", "pixel", "tablet", "ipad", "apple watch", "smartwatch", "kindle", "oneplus"]),
+  C("pc", "Computer e componenti", "Tecnologia", "Hardware Upgrade, refurbed", ["subito", "ebay", "fb"], ["hwupgrade"], ["backmarket", "refurbed", "rebuy", "amazonusato"],
+    ["pc", "computer", "portatile", "notebook", "macbook", "laptop", "imac", "mac mini", "monitor", "scheda video", "rtx", "gtx", "processore", "ryzen", "ssd", "stampante", "thinkpad"]),
+  C("gaming", "Videogiochi e console", "Tecnologia", "reBuy, Back Market", ["subito", "ebay", "vinted", "fb"], [], ["rebuy", "backmarket", "amazonusato"],
+    ["console", "ps5", "ps4", "playstation", "xbox", "nintendo", "switch", "game boy", "videogioco", "videogiochi", "steam deck", "joystick", "controller"]),
+  C("tv", "TV, audio e hi-fi", "Tecnologia", "HifiShark, Audiogon", ["subito", "ebay", "fb"], ["hifishark", "audiogon", "mercatinomusicale"], ["backmarket", "amazonusato"],
+    ["tv", "televisore", "oled", "soundbar", "casse", "diffusori", "giradischi", "amplificatore hifi", "hi-fi", "hifi", "stereo", "cuffie", "airpods", "sonos", "bose", "marantz", "denon", "proiettore"]),
+  C("foto", "Foto e video", "Tecnologia", "MPB, JuzaPhoto", GEN, ["juza"], ["mpb", "amazonusato"],
+    ["fotocamera", "macchina fotografica", "reflex", "mirrorless", "obiettivo", "canon", "nikon", "fujifilm", "sony a7", "lumix", "drone", "dji", "gopro", "videocamera", "flash", "treppiede", "leica"]),
+
+  C("musica", "Strumenti musicali", "Musica e libri", "Mercatino Musicale, Reverb, Thomann", GEN, ["mercatinomusicale", "reverb"], ["thomann", "strumentimusicali", "musikproduktiv", "gear4music"],
+    ["chitarra", "basso", "batteria", "piano", "pianoforte", "tastiera", "synth", "sintetizzatore", "amplificatore", "ampli", "fender", "gibson", "epiphone", "ibanez", "marshall", "pedale", "pedaliera", "microfono", "violino", "sassofono", "sax", "tromba", "mixer", "roland", "korg", "boss", "stratocaster", "telecaster", "les paul", "ukulele", "scheda audio", "casse monitor"]),
+  C("dischi", "Vinili e CD", "Musica e libri", "Discogs, CDandLP", ["ebay", "subito", "vinted"], ["discogs", "cdandlp"], [],
+    ["vinile", "vinili", "lp", "33 giri", "45 giri", "disco", "dischi", "cd", "musicassetta", "prima stampa"]),
+  C("libri", "Libri", "Musica e libri", "AbeBooks, Libraccio, Maremagnum", ["ebay", "subito", "vinted"], ["abebooks", "libraccio", "comprovendolibri", "maremagnum"], ["rebuy"],
+    ["libro", "libri", "romanzo", "prima edizione", "manuale", "libri scolastici", "enciclopedia", "saggio"]),
+
+  C("moda", "Abbigliamento e scarpe", "Moda", "Vinted, Depop, Micolet", ["vinted", "subito", "ebay"], ["depop", "micolet", "vestiaire"], [],
+    ["giacca", "giubbotto", "jeans", "pantaloni", "scarpe", "sneakers", "stivali", "zaino", "vestito", "abito", "maglione", "cappotto", "felpa", "camicia", "gonna", "nike", "adidas", "levi", "levi's", "zara", "north face", "carhartt", "vintage", "piumino", "jordan", "new balance"]),
+  C("lusso", "Lusso e orologi", "Moda", "Chrono24, Vestiaire, Collector Square", ["ebay", "vinted"], ["chrono24", "vestiaire", "collectorsquare", "catawiki"], [],
+    ["orologio", "rolex", "omega", "seiko", "tudor", "cartier", "patek", "submariner", "gucci", "prada", "louis vuitton", "chanel", "hermes", "moncler", "borsa", "gioielli", "anello"]),
+  C("bambini", "Bambini e neonati", "Moda", "Baby Bazar, Vinted", ["vinted", "subito", "fb"], ["babybazar"], ["amazonusato"],
+    ["passeggino", "carrozzina", "seggiolino", "lettino", "neonato", "bambino", "bambina", "trio", "box bambini", "fasciatoio", "lego", "giocattoli", "body"]),
+
+  C("casa", "Arredamento", "Casa", "Mercatino dell'Usato, Deesup, Pamono", ["subito", "fb", "ebay"], ["mercatinousato", "deesup", "pamono"], [],
+    ["divano", "tavolo", "sedia", "sedie", "lampada", "armadio", "letto", "materasso", "mobile", "libreria", "comodino", "ikea", "scrivania", "poltrona", "specchio", "tappeto", "vetrina", "credenza", "cassettiera"]),
+  C("elettrodomestici", "Elettrodomestici", "Casa", "Amazon Seconda mano, Back Market", ["subito", "fb", "ebay"], ["mercatinousato"], ["amazonusato", "backmarket"],
+    ["frigorifero", "lavatrice", "lavastoviglie", "forno", "asciugatrice", "aspirapolvere", "dyson", "bimby", "macchina caffè", "microonde", "condizionatore", "piano cottura", "robot"]),
+  C("faidate", "Fai da te e giardino", "Casa", "eBay, Subito, Agriaffaires", ["subito", "ebay", "fb"], ["agriaffaires"], ["amazonusato"],
+    ["trapano", "avvitatore", "smerigliatrice", "flex", "compressore", "saldatrice", "motosega", "tosaerba", "rasaerba", "decespugliatore", "tagliaerba", "generatore", "makita", "bosch", "dewalt", "hilti", "scala", "banco da lavoro"]),
+
+  C("bici", "Bici ed e-bike", "Tempo libero", "buycycle, Bikeflip, Upway", GEN, ["buycycle", "bikeflip"], ["upway"],
+    ["bici", "bicicletta", "mtb", "mountain bike", "ebike", "e-bike", "bici da corsa", "gravel", "bianchi", "specialized", "trek", "cannondale", "pinarello", "bmx"]),
+  C("sport", "Sport e outdoor", "Tempo libero", "Subito, Vinted, eBay", ["subito", "vinted", "ebay", "fb"], [], ["amazonusato"],
+    ["sci", "scarponi", "snowboard", "tenda", "sacco a pelo", "tapis roulant", "cyclette", "kayak", "sup", "monopattino", "pesi", "panca", "racchetta", "golf club", "mute", "surf", "pattini"]),
+  C("collezionismo", "Collezionismo e fumetti", "Tempo libero", "Catawiki, Delcampe, Cardmarket", ["ebay", "subito", "vinted"], ["catawiki", "delcampe", "cardmarket"], [],
+    ["francobolli", "monete", "cartoline", "fumetti", "fumetto", "manga", "carte pokemon", "pokemon", "magic", "yu-gi-oh", "figurine", "action figure", "modellismo", "trenini", "soldatini"]),
+  C("arte", "Arte e antiquariato", "Tempo libero", "Catawiki, Pamono, Anticoantico", ["ebay", "subito"], ["catawiki", "pamono", "anticoantico", "proantic"], [],
+    ["quadro", "dipinto", "stampa d'arte", "scultura", "antiquariato", "antico", "epoca", "liberty", "art deco", "porcellana", "argenteria", "cornice", "tappeto persiano"]),
+];
+
+const GROUP_LABEL = { gen: "Marketplace generalisti", spec: "Specialisti del settore", ric: "Ricondizionati e con garanzia" };
+const EXAMPLES = ["Golf 7 diesel", "Fender Stratocaster", "iPhone 13", "Canon EOS R6", "Divano in velluto", "Vinile Pink Floyd"];
+
+const $ = (s) => document.querySelector(s);
+const el = (tag, props = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (k === "class") n.className = v; else if (k === "text") n.textContent = v;
+    else if (k.startsWith("on")) n.addEventListener(k.slice(2), v); else n.setAttribute(k, v);
+  }
+  for (const k of kids) if (k != null) n.append(k);
+  return n;
+};
+
+let cat = "tutto", manualCat = false, query = "";
+
+function detect(q) {
+  const t = " " + q.toLowerCase().replace(/[^\p{L}\p{N}'\- ]/gu, " ") + " ";
+  let best = "tutto", score = 0;
+  for (const c of CATS) {
+    let s = 0;
+    for (const k of c.kw) if (t.includes(" " + k + " ") || (k.length > 4 && t.includes(" " + k))) s += k.length > 4 ? 2 : 1;
+    if (s > score) { score = s; best = c.id; }
+  }
+  return best;
+}
+
+const AREAS = [...new Set(CATS.map((c) => c.area).filter(Boolean))];
+function pickCat(id, focus) { cat = id; manualCat = true; renderCats(); render(); if (focus) $("#q").focus(); }
+function renderCats() {
+  const chip = (c) => el("button", { class: "chip", type: "button", "aria-pressed": String(c.id === cat), text: c.label, onclick: () => pickCat(c.id) });
+  $("#cats").replaceChildren(
+    el("div", { class: "arearow" }, el("span", { class: "arealabel", text: "" }), el("div", { class: "chiprow" }, chip(CATS[0]))),
+    ...AREAS.map((a) => el("div", { class: "arearow" }, el("span", { class: "arealabel", text: a }), el("div", { class: "chiprow" }, ...CATS.filter((c) => c.area === a).map(chip)))));
+  $("#catgrid").replaceChildren(...AREAS.map((a) => el("div", { class: "areablock" }, el("h3", { text: a }),
+    el("div", { class: "catgrid" }, ...CATS.filter((c) => c.area === a).map((c) => el("button", { class: "catcard", type: "button", onclick: () => pickCat(c.id, true) },
+      el("b", { text: c.label }), el("span", { text: c.desc }), el("span", { class: "count", text: (c.gen.length + c.spec.length + c.ric.length) + " siti" })))))));
+}
+
+function render() {
+  const has = !!query;
+  $("#results").hidden = !has; $("#idle").hidden = has;
+  if (!has) return;
+  const c = CATS.find((x) => x.id === cat);
+  const byKind = { gen: c.gen, spec: c.spec, ric: c.ric };
+  const list = [...c.gen, ...c.spec, ...c.ric].map((id) => SITES[id]);
+  $("#r-title").textContent = "Cerca anche su questi siti";
+  $("#r-sub").textContent = c.id === "tutto" ? `${list.length} siti generalisti. Scegli una categoria per aggiungere i negozi specializzati.` : `${c.area} › ${c.label}: ${list.length} siti. Ogni scheda apre i risultati in una nuova scheda del browser.`;
+  const doms = [...new Set(list.map((s) => s.dom))];
+  $("#r-all").href = "https://www.google.com/search?q=" + enc(query + " (" + doms.map((d) => "site:" + d).join(" OR ") + ")");
+
+  const groups = ["gen", "spec", "ric"].map((k) => {
+    const items = byKind[k].map((id) => SITES[id]);
+    if (!items.length) return null;
+    return el("div", { class: "group" }, el("h3", { text: GROUP_LABEL[k] + " · " + items.length }),
+      el("div", { class: "sites" }, ...items.map((s) => {
+        const viaGoogle = s.url(query).startsWith("https://www.google.com/");
+        return el("a", { class: "site", href: s.url(query), target: "_blank", rel: "noopener" },
+          el("div", { class: "mono", style: "background:" + s.color, text: s.name.replace(/[^A-Za-z]/g, "").slice(0, 2) }),
+          el("div", { style: "min-width:0" },
+            el("div", { class: "sname" }, s.name, el("span", { class: "how" + (viaGoogle ? " g" : ""), text: viaGoogle ? "via Google" : "diretto" })),
+            el("div", { class: "dom", text: s.dom }),
+            el("div", { class: "why", text: s.why }),
+            el("div", { class: "cta", text: "Apri risultati →" })));
+      })));
+  });
+  $("#groups").replaceChildren(...groups.filter(Boolean));
+}
+
+/* recent searches: per-viewer convenience only */
+function loadRecent() { try { return JSON.parse(localStorage.getItem("ist-recent") || "[]"); } catch { return []; } }
+function saveRecent(q) {
+  const r = [q, ...loadRecent().filter((x) => x.toLowerCase() !== q.toLowerCase())].slice(0, 6);
+  try { localStorage.setItem("ist-recent", JSON.stringify(r)); } catch {}
+  renderRecent();
+}
+function renderRecent() {
+  const r = loadRecent(), box = $("#recent");
+  box.hidden = !r.length;
+  box.replaceChildren(el("span", { text: "Ricerche recenti:" }), ...r.map((q) => el("button", { type: "button", text: q, onclick: () => run(q) })));
+}
+
+/* ---------- annunci unificati ---------- */
+let ads = [], adOffset = 0, adSort = "new", adReq = 0;
+const eurFmt = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
+function ago(d) {
+  const t = Date.parse(d); if (!t) return "";
+  const m = Math.round((Date.now() - t) / 60000);
+  if (m < 60) return m <= 1 ? "adesso" : m + " min fa";
+  const h = Math.round(m / 60); if (h < 24) return h + (h === 1 ? " ora fa" : " ore fa");
+  const g = Math.round(h / 24); if (g < 30) return g + (g === 1 ? " giorno fa" : " giorni fa");
+  return new Date(t).toLocaleDateString("it-IT", { day: "numeric", month: "short", year: "numeric" });
+}
+function renderAds() {
+  const list = [...ads];
+  if (adSort === "low") list.sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity));
+  $("#sort-new").setAttribute("aria-pressed", String(adSort === "new"));
+  $("#sort-low").setAttribute("aria-pressed", String(adSort === "low"));
+  $("#listings").replaceChildren(...list.map((a) => el("a", { class: "ad", href: a.url, target: "_blank", rel: "noopener nofollow" },
+    el("div", { class: "img" }, a.image ? el("img", { src: a.image, alt: "", loading: "lazy", referrerpolicy: "no-referrer" }) : null),
+    el("div", { class: "body" },
+      el("div", { class: "p", text: a.price != null ? (a.currency === "EUR" ? eurFmt.format(a.price) : a.price + " " + a.currency) : "Prezzo da vedere" }),
+      el("div", { class: "t", text: a.title }),
+      el("div", { class: "m" }, el("span", { class: "src", text: a.source }), el("span", { text: ago(a.date) }), a.location ? el("span", { text: a.location }) : null)))));
+}
+async function loadAds(reset) {
+  const my = ++adReq;
+  if (reset) { ads = []; adOffset = 0; $("#listings").replaceChildren(...Array.from({ length: 8 }, () => el("div", { class: "skel" }))); }
+  $("#l-title").replaceChildren("Annunci per ", el("em", { text: "“" + query + "”" }));
+  $("#l-sub").textContent = "Cerco tra gli annunci…";
+  $("#l-state").hidden = true; $("#l-more").hidden = true;
+  try {
+    const res = await fetch("/api/search?q=" + enc(query) + "&offset=" + adOffset);
+    const data = await res.json();
+    if (my !== adReq) return;
+    if (!res.ok) throw new Error(data.error || "Ricerca non riuscita");
+    ads = ads.concat(data.items); adOffset += 50;
+    const srcs = data.sources.filter((s) => s.ok).map((s) => s.name).join(", ") || "nessuna fonte";
+    const total = data.sources.reduce((n, s) => n + (s.total || 0), 0);
+    $("#l-sub").textContent = `${total.toLocaleString("it-IT")} annunci trovati su ${srcs}. Ne vedi ${ads.length}.`;
+    renderAds();
+    $("#l-more").hidden = ads.length >= total || !data.items.length;
+    if (!ads.length) { $("#l-state").hidden = false; $("#l-state").textContent = "Nessun annuncio trovato in lista. Prova con meno parole, o cerca nei siti qui sotto."; }
+  } catch (e) {
+    if (my !== adReq) return;
+    if (reset) $("#listings").replaceChildren();
+    $("#l-sub").textContent = "";
+    $("#l-state").hidden = false; $("#l-state").textContent = e.message + " Intanto puoi cercare nei siti qui sotto.";
+  }
+}
+$("#sort-new").addEventListener("click", () => { adSort = "new"; renderAds(); });
+$("#sort-low").addEventListener("click", () => { adSort = "low"; renderAds(); });
+$("#l-more").addEventListener("click", () => loadAds(false));
+
+function run(q) {
+  query = q.trim(); $("#q").value = query;
+  if (!query) { render(); return; }
+  if (!manualCat || cat === "tutto") cat = detect(query);
+  manualCat = false;
+  renderCats(); render(); saveRecent(query); loadAds(true);
+  $("#results").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+$("#form").addEventListener("submit", (e) => { e.preventDefault(); run($("#q").value); });
+$("#examples").append(...EXAMPLES.map((x) => el("button", { type: "button", text: x, onclick: () => run(x) })));
+
+renderCats(); renderRecent(); render();
+</script>
+</body>
+</html>
