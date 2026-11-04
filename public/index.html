@@ -127,6 +127,7 @@ a.ad:hover { transform: translateY(-2px); border-color: var(--accent); }
 .ad .t { font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .ad .m { font-size: 12px; color: var(--muted); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .src { font-family: var(--f-mono); font-size: 10.5px; padding: 1px 6px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.cond { font-size: 11px; font-weight: 600; color: var(--ink); }
 .state { padding: 28px 0; color: var(--muted); }
 .more { display: flex; justify-content: center; padding-bottom: 8px; }
 .more button { border: 1px solid var(--line); background: var(--surface); padding: 10px 18px; border-radius: 12px; font-weight: 700; cursor: pointer; }
@@ -161,6 +162,7 @@ a.ad:hover { transform: translateY(-2px); border-color: var(--accent); }
         <button type="button" id="sort-low" aria-pressed="false">Prezzo più basso</button>
       </div>
     </div>
+    <div id="l-sources" class="chiprow" style="padding-top:14px" hidden></div>
     <div id="listings" class="listings"></div>
     <div id="l-state" class="state" hidden></div>
     <div class="more"><button type="button" id="l-more" hidden>Carica altri annunci</button></div>
@@ -180,7 +182,7 @@ a.ad:hover { transform: translateY(-2px); border-color: var(--accent); }
   </section>
 
   <footer>
-    <p><b>Come funziona.</b> Gli annunci in lista arrivano dalle fonti che li mettono a disposizione ufficialmente (per ora eBay). Ogni annuncio porta al sito originale, dove avviene l'acquisto.</p>
+    <p><b>Come funziona.</b> Gli annunci in lista arrivano da eBay (API ufficiale), dalle offerte dei negozi su Google Shopping e dagli annunci dei siti di annunci che Google ha indicizzato. Ogni annuncio porta al sito originale, dove avviene l'acquisto.</p>
     <p>Per gli altri siti apriamo la loro pagina di ricerca già compilata. Dove il sito non accetta una ricerca diretta dal link, usiamo una ricerca Google limitata a quel sito (segnata con "via Google").</p>
   </footer>
 </main>
@@ -420,7 +422,7 @@ function renderRecent() {
 }
 
 /* ---------- annunci unificati ---------- */
-let ads = [], adOffset = 0, adSort = "new", adReq = 0;
+let ads = [], adOffset = 0, adSort = "new", adReq = 0, adSource = "";
 const eurFmt = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
 function ago(d) {
   const t = Date.parse(d); if (!t) return "";
@@ -431,7 +433,15 @@ function ago(d) {
   return new Date(t).toLocaleDateString("it-IT", { day: "numeric", month: "short", year: "numeric" });
 }
 function renderAds() {
-  const list = [...ads];
+  const counts = {};
+  for (const a of ads) counts[a.source] = (counts[a.source] || 0) + 1;
+  const names = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+  if (adSource && !counts[adSource]) adSource = "";
+  $("#l-sources").hidden = names.length < 2;
+  $("#l-sources").replaceChildren(
+    el("button", { class: "chip", type: "button", "aria-pressed": String(!adSource), text: "Tutte le fonti · " + ads.length, onclick: () => { adSource = ""; renderAds(); } }),
+    ...names.map((n) => el("button", { class: "chip", type: "button", "aria-pressed": String(adSource === n), text: n + " · " + counts[n], onclick: () => { adSource = n; renderAds(); } })));
+  const list = ads.filter((a) => !adSource || a.source === adSource);
   if (adSort === "low") list.sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity));
   $("#sort-new").setAttribute("aria-pressed", String(adSort === "new"));
   $("#sort-low").setAttribute("aria-pressed", String(adSort === "low"));
@@ -440,25 +450,25 @@ function renderAds() {
     el("div", { class: "body" },
       el("div", { class: "p", text: a.price != null ? (a.currency === "EUR" ? eurFmt.format(a.price) : a.price + " " + a.currency) : "Prezzo da vedere" }),
       el("div", { class: "t", text: a.title }),
-      el("div", { class: "m" }, el("span", { class: "src", text: a.source }), el("span", { text: ago(a.date) }), a.location ? el("span", { text: a.location }) : null)))));
+      el("div", { class: "m" }, el("span", { class: "src", text: a.source }), a.condition ? el("span", { class: "cond", text: a.condition }) : null, el("span", { text: a.date ? ago(a.date) : "offerta" }), a.location ? el("span", { text: a.location }) : null)))));
 }
 async function loadAds(reset) {
   const my = ++adReq;
-  if (reset) { ads = []; adOffset = 0; $("#listings").replaceChildren(...Array.from({ length: 8 }, () => el("div", { class: "skel" }))); }
+  if (reset) { ads = []; adOffset = 0; adSource = ""; $("#listings").replaceChildren(...Array.from({ length: 8 }, () => el("div", { class: "skel" }))); }
   $("#l-title").replaceChildren("Annunci per ", el("em", { text: "“" + query + "”" }));
   $("#l-sub").textContent = "Cerco tra gli annunci…";
   $("#l-state").hidden = true; $("#l-more").hidden = true;
   try {
-    const res = await fetch("/api/search?q=" + enc(query) + "&offset=" + adOffset);
+    const res = await fetch("/api/search?q=" + enc(query) + "&cat=" + enc(cat) + "&offset=" + adOffset);
     const data = await res.json();
     if (my !== adReq) return;
     if (!res.ok) throw new Error(data.error || "Ricerca non riuscita");
     ads = ads.concat(data.items); adOffset += 50;
-    const srcs = data.sources.filter((s) => s.ok).map((s) => s.name).join(", ") || "nessuna fonte";
-    const total = data.sources.reduce((n, s) => n + (s.total || 0), 0);
-    $("#l-sub").textContent = `${total.toLocaleString("it-IT")} annunci trovati su ${srcs}. Ne vedi ${ads.length}.`;
+    const sites = new Set(ads.map((a) => a.source)).size;
+    $("#l-sub").textContent = `${ads.length} annunci e offerte da ${sites} ${sites === 1 ? "sito" : "siti"}. I più recenti in alto, poi le offerte dei negozi.`;
     renderAds();
-    $("#l-more").hidden = ads.length >= total || !data.items.length;
+    const ebaySrc = data.sources.find((s) => s.name === "eBay");
+    $("#l-more").hidden = !data.items.length || !ebaySrc || !ebaySrc.ok || ads.filter((a) => a.source === "eBay").length >= ebaySrc.total;
     if (!ads.length) { $("#l-state").hidden = false; $("#l-state").textContent = "Nessun annuncio trovato in lista. Prova con meno parole, o cerca nei siti qui sotto."; }
   } catch (e) {
     if (my !== adReq) return;
